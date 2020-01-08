@@ -1,0 +1,55 @@
+baseURL = "https://heqing90.github.io/"
+title = "HeQing's Blog"
+theme = "hugo-notepadium"
+#copyright = "©2019 Notepadium."
+
+languageCode = "zh-cn"  # for the RSS generation
+defaultContentLanguage = "zh-cn"
+
+hasCJKLanguage = true
+
+enableRobotsTXT = true
+
+# Enable Disqus
+#disqusShortname = "XXX"
+
+# Google Analytics
+#googleAnalytics = "UA-123-45"
+
+[markup.highlight]
+codeFences = true
+noClasses = false
+
+[markup.goldmark.renderer]
+unsafe = true  # enable raw HTML in Markdown
+
+[params]
+style = "auto"  # default: auto. light: light theme, dark: dark theme, auto: based on system.
+dateFormat = "Jan 02, 2006"  # if unset, default is "2006-01-02"
+readingTime = false  # show reading time after article date
+#logo = ""
+#slogan = "100% JavaScript-free"
+license = "" 
+
+[params.assets]
+css = ["css/fonts.css"]
+
+[params.comments]
+enable = false  # En/Disable comments globally, default: false. You can always enable comments on per page.
+
+[params.math]
+enable = false # load math globally, default: false. You can always enable math on per page.
+use = "katex"  # builtin: "katex", "mathjax".  default: "katex"
+
+[params.syntax]
+use = "none"  # builtin: "prismjs", "hljs". "none" means Chroma
+theme = "xcode"
+darkTheme = "xcode-dark"
+
+[params.nav]
+showCategories = true       # /categories/
+showTags = true             # /tags/
+
+[[params.nav.custom]]
+title = "About"
+url = "/about/"
