@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>HeQing&#39;s Blog</title>
-    <link>https://heqing90.github.io/myblog/</link>
-    <description>Recent content on HeQing&#39;s Blog</description>
+    <title>gRPC on HeQing&#39;s Blog</title>
+    <link>https://heqing90.github.io/myblog/tags/grpc/</link>
+    <description>Recent content in gRPC on HeQing&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <lastBuildDate>Wed, 08 Jan 2020 15:32:38 +0800</lastBuildDate>
     
-	<atom:link href="https://heqing90.github.io/myblog/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://heqing90.github.io/myblog/tags/grpc/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -18,15 +18,6 @@
       
       <guid>https://heqing90.github.io/myblog/post/grpc-go-python/</guid>
       <description>环境准备 配置 gRPC for Golang 安装 grpc go get -u google.golang.org/grpc 安装 protoc-gen-go go get -u github.com/golang/protobuf/protoc-gen-go 配置 gRPC for python 安装 grpcio python -m pip install grpcio 安装 grpcio-tools python -m pip install grpcio-tools 编辑 protocol buffer 协议 syntax = &amp;#34;proto3&amp;#34;; package myhello; // my test service service MyTest { // my test foo rpc MyFoo (MyRequest) returns</description>
-    </item>
-    
-    <item>
-      <title>Windows使用Github Pages &#43; Hugo 搭建个人博客</title>
-      <link>https://heqing90.github.io/myblog/post/github-hugo-win/</link>
-      <pubDate>Sun, 05 Jan 2020 22:43:26 +0800</pubDate>
-      
-      <guid>https://heqing90.github.io/myblog/post/github-hugo-win/</guid>
-      <description>环境准备 安装Hugo 下载Hugo Release 对应的Windows 版本 hugo.exe 解压Zip, 将hugo.exe路径添加到环境变量Path中 检查 hugo 是否能正常运行 hugo</description>
     </item>
     
   </channel>

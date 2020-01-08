@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml"><url>
-    <loc>/myblog/categories/</loc></url><url>
-    <loc>/myblog/</loc></url><url>
-    <loc>/myblog/tags/</loc></url></urlset>
+    <loc>/myblog/categories/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/golang/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/grpc/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/post/grpc-go-python/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/post/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/protocol-buffer/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/python/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/categories/starter/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/</loc><lastmod>2020-01-08T15:32:38+08:00</lastmod></url><url>
+    <loc>/myblog/tags/github/</loc><lastmod>2020-01-05T22:43:26+08:00</lastmod></url><url>
+    <loc>/myblog/tags/hugo/</loc><lastmod>2020-01-05T22:43:26+08:00</lastmod></url><url>
+    <loc>/myblog/tags/windows/</loc><lastmod>2020-01-05T22:43:26+08:00</lastmod></url><url>
+    <loc>/myblog/post/github-hugo-win/</loc><lastmod>2020-01-05T22:43:26+08:00</lastmod></url></urlset>
