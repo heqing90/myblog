@@ -8,7 +8,7 @@ tags:
     - "Python"
     - "Protocol Buffer"
 categories:
-    - "starter"
+    - "入门"
 ---
 
 ## 环境准备

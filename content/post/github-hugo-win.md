@@ -7,7 +7,7 @@ tags:
     - "github"
     - "hugo"
 categories: 
-    - "starter"
+    - "入门"
 ---
 
 ## 环境准备
