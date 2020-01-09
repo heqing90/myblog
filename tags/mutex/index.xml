@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>mutex on HeQing&#39;s Blog</title>
+    <link>https://heqing90.github.io/myblog/tags/mutex/</link>
+    <description>Recent content in mutex on HeQing&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Thu, 09 Jan 2020 15:18:00 +0800</lastBuildDate>
+    
+	<atom:link href="https://heqing90.github.io/myblog/tags/mutex/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Golang 两种同步变量的实现方式</title>
+      <link>https://heqing90.github.io/myblog/post/golang-sync-pattern/</link>
+      <pubDate>Thu, 09 Jan 2020 15:18:00 +0800</pubDate>
+      
+      <guid>https://heqing90.github.io/myblog/post/golang-sync-pattern/</guid>
+      <description>使用 sync.RWMutex 同步数据读写 type syncData struct { sync.RWMutex val int } func (data *syncData) getValue() int { data.RLock() defer data.RUnlock() return data.val } func (data *syncData) setValue(v int) { data.Lock() defer data.Unlock() data.val = v } 使用 channel 同步数据读写 type chData struct { getCh chan int setCh chan int val int } func newChData() *chData { d :=</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-cn"><meta charset="utf-8"><meta name="generator" content="Hugo 0.62.2" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark"><title>Golang 两种同步变量的实现方式&nbsp;&ndash;&nbsp;HeQing&#39;s Blog</title><link rel="stylesheet" href="/myblog/css/core.min.0fd0248e8ca66c409930a84a422f95c79fe473ea867f1077a26ff821e5982062fc8d983edbd47ec0a95b4757f8e87fc4.css" integrity="sha384-D9AkjoymbECZMKhKQi&#43;Vx5/kc&#43;qGfxB3om/4IeWYIGL8jZg&#43;29R&#43;wKlbR1f46H/E"><body>
+    <div class="base-body"><section id="header" class="site header max-body-width">
+    <div class="header wrap"><span class="header left-side"><a class="site home" href="/myblog/"><span class="site name">HeQing&#39;s Blog</span></a></span>
+        <span class="header right-side"><div class="nav wrap"><div class="nav"><a class="nav item" href="/myblog/categories/">Categories</a><a class="nav item" href="/myblog/tags/">Tags</a><a class="nav item" href="/myblog/about/">About</a></div></div></span></div></section><div id="content" class="max-body-width"><section class="article header">
+    <h1 class="article title">Golang 两种同步变量的实现方式</h1><p class="article date">Jan 09, 2020</p></section><article class="article markdown-body"><h2 id="使用-syncrwmutex-同步数据读写">使用 <em>sync.RWMutex</em> 同步数据读写</h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">type</span> <span class="nx">syncData</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+        <span class="nx">val</span> <span class="kt">int</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">data</span> <span class="o">*</span><span class="nx">syncData</span><span class="p">)</span> <span class="nf">getValue</span><span class="p">(</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+        <span class="nx">data</span><span class="p">.</span><span class="nf">RLock</span><span class="p">(</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">data</span><span class="p">.</span><span class="nf">RUnlock</span><span class="p">(</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nx">data</span><span class="p">.</span><span class="nx">val</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">data</span> <span class="o">*</span><span class="nx">syncData</span><span class="p">)</span> <span class="nf">setValue</span><span class="p">(</span><span class="nx">v</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">data</span><span class="p">.</span><span class="nf">Lock</span><span class="p">(</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">data</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">(</span><span class="p">)</span>
+        <span class="nx">data</span><span class="p">.</span><span class="nx">val</span> <span class="p">=</span> <span class="nx">v</span>
+    <span class="p">}</span>
+</code></pre></div><h2 id="使用-channel-同步数据读写">使用 <em>channel</em> 同步数据读写</h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">type</span> <span class="nx">chData</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">getCh</span> <span class="kd">chan</span> <span class="kt">int</span>
+        <span class="nx">setCh</span> <span class="kd">chan</span> <span class="kt">int</span>
+        <span class="nx">val</span>   <span class="kt">int</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="nf">newChData</span><span class="p">(</span><span class="p">)</span> <span class="o">*</span><span class="nx">chData</span> <span class="p">{</span>
+        <span class="nx">d</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">chData</span><span class="p">{</span><span class="nx">getCh</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span><span class="p">,</span> <span class="nx">setCh</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span><span class="p">,</span> <span class="nx">val</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="k">go</span> <span class="nx">d</span><span class="p">.</span><span class="nf">mix</span><span class="p">(</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nx">d</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">data</span> <span class="o">*</span><span class="nx">chData</span><span class="p">)</span> <span class="nf">mix</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">for</span> <span class="p">{</span>
+            <span class="k">select</span> <span class="p">{</span>
+            <span class="k">case</span> <span class="nx">data</span><span class="p">.</span><span class="nx">getCh</span> <span class="o">&lt;-</span> <span class="nx">data</span><span class="p">.</span><span class="nx">val</span><span class="p">:</span>
+            <span class="k">case</span> <span class="nx">data</span><span class="p">.</span><span class="nx">val</span> <span class="p">=</span> <span class="o">&lt;-</span><span class="nx">data</span><span class="p">.</span><span class="nx">setCh</span><span class="p">:</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">data</span> <span class="o">*</span><span class="nx">chData</span><span class="p">)</span> <span class="nf">getValue</span><span class="p">(</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="o">&lt;-</span><span class="nx">data</span><span class="p">.</span><span class="nx">getCh</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">data</span> <span class="o">*</span><span class="nx">chData</span><span class="p">)</span> <span class="nf">setValue</span><span class="p">(</span><span class="nx">v</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">data</span><span class="p">.</span><span class="nx">setCh</span> <span class="o">&lt;-</span> <span class="nx">v</span>
+    <span class="p">}</span>
+</code></pre></div><h2 id="对比测试">对比测试</h2>
+<ol>
+<li>
+<p>测试代码</p>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">func</span> <span class="nf">BenchmarkChannelCompete</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">d</span> <span class="o">:=</span> <span class="nf">newChData</span><span class="p">(</span><span class="p">)</span>
+        <span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">(</span><span class="p">)</span>
+            <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                <span class="nx">d</span><span class="p">.</span><span class="nf">getValue</span><span class="p">(</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span><span class="p">(</span><span class="p">)</span>
+
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">(</span><span class="p">)</span>
+            <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                <span class="nx">d</span><span class="p">.</span><span class="nf">setValue</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span><span class="p">(</span><span class="p">)</span>
+
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">(</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="nf">BenchmarkMutexCompete</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">d</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">syncData</span><span class="p">{</span><span class="p">}</span>
+        <span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">(</span><span class="p">)</span>
+            <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                <span class="nx">d</span><span class="p">.</span><span class="nf">getValue</span><span class="p">(</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span><span class="p">(</span><span class="p">)</span>
+
+        <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">(</span><span class="p">)</span>
+            <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                <span class="nx">d</span><span class="p">.</span><span class="nf">setValue</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span><span class="p">(</span><span class="p">)</span>
+
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">(</span><span class="p">)</span>
+    <span class="p">}</span>
+</code></pre></div></li>
+<li>
+<p>测试结果</p>
+<div class="highlight"><pre class="chroma"><code class="language-shell" data-lang="shell">    PS C:<span class="se">\U</span>sers<span class="se">\a</span>dmin<span class="se">\g</span>o<span class="se">\s</span>rc<span class="se">\t</span>est<span class="se">\g</span>o_sync&gt; go <span class="nb">test</span> -benchmem -benchtime<span class="o">=</span>5s test<span class="se">\g</span>o_sync -bench . -cpu<span class="o">=</span><span class="m">1</span>
+    goos: windows
+    goarch: amd64
+    BenchmarkChannelCompete         <span class="m">10000000</span>              <span class="m">1069</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    BenchmarkMutexCompete           <span class="m">20000000</span>               <span class="m">565</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    PASS
+    ok      test/go_sync    23.764s
+    PS C:<span class="se">\U</span>sers<span class="se">\a</span>dmin<span class="se">\g</span>o<span class="se">\s</span>rc<span class="se">\t</span>est<span class="se">\g</span>o_sync&gt; go <span class="nb">test</span> -benchmem -benchtime<span class="o">=</span>5s test<span class="se">\g</span>o_sync -bench . -cpu<span class="o">=</span><span class="m">2</span>
+    goos: windows
+    goarch: amd64
+    BenchmarkChannelCompete-2        <span class="m">5000000</span>              <span class="m">1576</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    BenchmarkMutexCompete-2         <span class="m">10000000</span>               <span class="m">942</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    PASS
+    ok      test/go_sync    19.838s
+    PS C:<span class="se">\U</span>sers<span class="se">\a</span>dmin<span class="se">\g</span>o<span class="se">\s</span>rc<span class="se">\t</span>est<span class="se">\g</span>o_sync&gt; go <span class="nb">test</span> -benchmem -benchtime<span class="o">=</span>5s test<span class="se">\g</span>o_sync -bench . -cpu<span class="o">=</span><span class="m">4</span>
+    goos: windows
+    goarch: amd64
+    BenchmarkChannelCompete-4        <span class="m">5000000</span>              <span class="m">1496</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    BenchmarkMutexCompete-4          <span class="m">5000000</span>              <span class="m">1222</span> ns/op               <span class="m">0</span> B/op          <span class="m">0</span> allocs/op
+    PASS
+    ok      test/go_sync    16.486s
+</code></pre></div></li>
+</ol>
+<h2 id="小结">小结</h2>
+<ol>
+<li><em><strong>Mutex</strong></em> 方式实现数据的读写同步更为简洁方便，并且在一般情况下效率更高。</li>
+<li><em><strong>channel</strong></em> 方式实现数据的读写同步写法上略微复杂， 但是更容易处理异常情况，<br>
+比如在 <em>select</em> 时可以监听超时消息，进而做一些特殊处理。</li>
+</ol>
+</article><section class="article labels"><a class="article category" href=/myblog/categories/%E5%85%A5%E9%97%A8/><span class="hashtag">#</span>入门</a><a class="article tag" href=/myblog/tags/golang/><span class="hashtag">#</span>Golang</a><a class="article tag" href=/myblog/tags/mutex/><span class="hashtag">#</span>mutex</a><a class="article tag" href=/myblog/tags/channel/><span class="hashtag">#</span>channel</a></section><section class="article navigation"><p><a class="link" href="/myblog/post/grpc-go-python/"><span class="li"></span>gRPC + Golang + python 初窥门径</a class="link">
+    </p></section></div><section id="footer" class="footer max-body-width"><div class="footer-wrap">
+    <p class="copyright">HeQing's Blog</p>
+    <p class="powerby"><span>Powered by </span><a href="https://gohugo.io" 
+        target="_blank">Hugo</a><span> and the </span><a href="https://themes.gohugo.io/hugo-notepadium/" 
+        target="_blank">Notepadium</a></p>
+</div></section></div>
+</body>
+
+</html>
