@@ -6,10 +6,19 @@
     <description>Recent content in 入门 on HeQing&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Thu, 09 Jan 2020 15:18:00 +0800</lastBuildDate>
+    <lastBuildDate>Mon, 13 Jan 2020 16:15:23 +0800</lastBuildDate>
     
 	<atom:link href="https://heqing90.github.io/myblog/categories/%E5%85%A5%E9%97%A8/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Etcd client V3 分布式锁实现方式</title>
+      <link>https://heqing90.github.io/myblog/post/etcd-go-distributed-lock/</link>
+      <pubDate>Mon, 13 Jan 2020 16:15:23 +0800</pubDate>
+      
+      <guid>https://heqing90.github.io/myblog/post/etcd-go-distributed-lock/</guid>
+      <description>原理 客户端以统一前缀（比如/mylock）创建全局唯一Key（client 1 -&amp;gt; /mylock/client-1-uuid, client 2 -&amp;gt; /mylock/client-2-uuid ）。 为该Key绑定租约(lease)，并设定TTL，</description>
+    </item>
     
     <item>
       <title>Golang 两种同步变量的实现方式</title>

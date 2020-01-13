@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-cn"><meta charset="utf-8"><meta name="generator" content="Hugo 0.62.2" /><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark"><title>Etcd client V3 分布式锁实现方式&nbsp;&ndash;&nbsp;HeQing&#39;s Blog</title><link rel="stylesheet" href="/myblog/css/core.min.0fd0248e8ca66c409930a84a422f95c79fe473ea867f1077a26ff821e5982062fc8d983edbd47ec0a95b4757f8e87fc4.css" integrity="sha384-D9AkjoymbECZMKhKQi&#43;Vx5/kc&#43;qGfxB3om/4IeWYIGL8jZg&#43;29R&#43;wKlbR1f46H/E"><body>
+    <div class="base-body"><section id="header" class="site header max-body-width">
+    <div class="header wrap"><span class="header left-side"><a class="site home" href="/myblog/"><span class="site name">HeQing&#39;s Blog</span></a></span>
+        <span class="header right-side"><div class="nav wrap"><div class="nav"><a class="nav item" href="/myblog/categories/">Categories</a><a class="nav item" href="/myblog/tags/">Tags</a><a class="nav item" href="/myblog/about/">About</a></div></div></span></div></section><div id="content" class="max-body-width"><section class="article header">
+    <h1 class="article title">Etcd client V3 分布式锁实现方式</h1><p class="article date">Jan 13, 2020</p></section><article class="article markdown-body"><h2 id="原理">原理</h2>
+<ol>
+<li>
+<p>客户端以统一前缀（比如/mylock）创建全局唯一Key（client 1 -&gt; /mylock/client-1-uuid, client 2 -&gt; /mylock/client-2-uuid ）。</p>
+</li>
+<li>
+<p>为该Key绑定租约(lease)，并设定TTL，客户端需创建keepalive任务刷新TTL时间，避免死锁。</p>
+</li>
+<li>
+<p>客户端将上诉 <em>Key-Value</em> 写入ETCD，并获取锁前缀(/mylock)下所有键值，根据返回的 <em>reversion</em> 的大小判断自己能否持有锁。</p>
+<ul>
+<li>拥有最小reversion则表明可以持有锁。</li>
+<li>自己的reversion不是最小则等待直到上一个reversion的键值被删掉，然后持有该锁</li>
+</ul>
+</li>
+<li>
+<p>删除  <em>lock key</em>，则表明释放该锁</p>
+</li>
+</ol>
+<h2 id="源码分析">源码分析</h2>
+<ol>
+<li>
+<p><em><strong>session</strong></em></p>
+<ul>
+<li>Keepalive</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">lessor</span><span class="p">)</span> <span class="nf">KeepAlive</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">id</span> <span class="nx">LeaseID</span><span class="p">)</span> <span class="p">(</span><span class="o">&lt;-</span><span class="kd">chan</span> <span class="o">*</span><span class="nx">LeaseKeepAliveResponse</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">...</span>
+        <span class="k">go</span> <span class="nx">l</span><span class="p">.</span><span class="nf">keepAliveCtxCloser</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">id</span><span class="p">,</span> <span class="nx">ka</span><span class="p">.</span><span class="nx">donec</span><span class="p">)</span>
+        <span class="nx">l</span><span class="p">.</span><span class="nx">firstKeepAliveOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="p">)</span> <span class="p">{</span>
+            <span class="c1">// 根据服务器回复的TTL时间判断租约是否存在
+</span><span class="c1"></span>            <span class="k">go</span> <span class="nx">l</span><span class="p">.</span><span class="nf">recvKeepAliveLoop</span><span class="p">(</span><span class="p">)</span>
+            <span class="c1">// 网络异常情况下，根据自己的Timer判断租约是否存在
+</span><span class="c1"></span>            <span class="k">go</span> <span class="nx">l</span><span class="p">.</span><span class="nf">deadlineLoop</span><span class="p">(</span><span class="p">)</span>
+        <span class="p">}</span><span class="p">)</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">lessor</span><span class="p">)</span> <span class="nf">recvKeepAliveLoop</span><span class="p">(</span><span class="p">)</span> <span class="p">(</span><span class="nx">gerr</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">...</span>
+        <span class="k">for</span> <span class="p">{</span>
+            <span class="c1">// 开启心跳发送任务
+</span><span class="c1"></span>            <span class="nx">stream</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">l</span><span class="p">.</span><span class="nf">resetRecv</span><span class="p">(</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <span class="o">...</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="c1">// 根据服务端的响应刷新 lease TTL 时间（TTL/3 触发刷新）
+</span><span class="c1"></span>                <span class="nx">l</span><span class="p">.</span><span class="nf">recvKeepAlive</span><span class="p">(</span><span class="nx">resp</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">lessor</span><span class="p">)</span> <span class="nf">recvKeepAlive</span><span class="p">(</span><span class="nx">resp</span> <span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">LeaseKeepAliveResponse</span><span class="p">)</span> <span class="p">{</span>
+
+        <span class="c1">// send update to all channels
+</span><span class="c1"></span>        <span class="c1">// deadline 以接受到服务器响应的时间为基准再加上TTL， 会比服务端的TTL多一个网络延时
+</span><span class="c1"></span>        <span class="nx">nextKeepAlive</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">karesp</span><span class="p">.</span><span class="nx">TTL</span><span class="p">)</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">)</span>
+        <span class="nx">ka</span><span class="p">.</span><span class="nx">deadline</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">karesp</span><span class="p">.</span><span class="nx">TTL</span><span class="p">)</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+
+    <span class="p">}</span>
+</code></pre></div><ul>
+<li>Session Done</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="c1">// 租约失效时触发, 可监听该channel,在租约失效时做对应处理
+</span><span class="c1"></span>    <span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Session</span><span class="p">)</span> <span class="nf">Done</span><span class="p">(</span><span class="p">)</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{</span><span class="p">}</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">s</span><span class="p">.</span><span class="nx">donec</span> <span class="p">}</span>
+</code></pre></div></li>
+<li>
+<p><em><strong>mutex</strong></em></p>
+<ul>
+<li>加锁</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Mutex</span><span class="p">)</span> <span class="nf">Lock</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+        <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">tryAcquire</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">err</span>
+        <span class="p">}</span>
+        <span class="c1">// 如果该客户端的key的create version 是最小的则持有该锁
+</span><span class="c1"></span>        <span class="nx">ownerKey</span> <span class="o">:=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Responses</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="p">.</span><span class="nf">GetResponseRange</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nx">Kvs</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">ownerKey</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="nx">ownerKey</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="p">.</span><span class="nx">CreateRevision</span> <span class="o">==</span> <span class="nx">m</span><span class="p">.</span><span class="nx">myRev</span> <span class="p">{</span>
+            <span class="nx">m</span><span class="p">.</span><span class="nx">hdr</span> <span class="p">=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Header</span>
+            <span class="k">return</span> <span class="kc">nil</span>
+        <span class="p">}</span>
+        <span class="nx">client</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">s</span><span class="p">.</span><span class="nf">Client</span><span class="p">(</span><span class="p">)</span>
+        <span class="c1">// 如果该锁被其他客服端持有，则等待该lockkey下拥有上一个reversion的键值被删除
+</span><span class="c1"></span>        <span class="nx">hdr</span><span class="p">,</span> <span class="nx">werr</span> <span class="o">:=</span> <span class="nf">waitDeletes</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">client</span><span class="p">,</span> <span class="nx">m</span><span class="p">.</span><span class="nx">pfx</span><span class="p">,</span> <span class="nx">m</span><span class="p">.</span><span class="nx">myRev</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1">// release lock key if wait failed
+</span><span class="c1"></span>        <span class="k">if</span> <span class="nx">werr</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">m</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">(</span><span class="nx">client</span><span class="p">.</span><span class="nf">Ctx</span><span class="p">(</span><span class="p">)</span><span class="p">)</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">m</span><span class="p">.</span><span class="nx">hdr</span> <span class="p">=</span> <span class="nx">hdr</span>
+        <span class="p">}</span>
+
+        <span class="c1">// make sure the session is not expired, and the owner key still exists.
+</span><span class="c1"></span>        <span class="nx">gresp</span><span class="p">,</span> <span class="nx">werr</span> <span class="o">:=</span> <span class="nx">client</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">werr</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="nx">m</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">(</span><span class="nx">client</span><span class="p">.</span><span class="nf">Ctx</span><span class="p">(</span><span class="p">)</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nx">werr</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">gresp</span><span class="p">.</span><span class="nx">Kvs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span> <span class="c1">// is the session key lost?
+</span><span class="c1"></span>            <span class="k">return</span> <span class="nx">ErrSessionExpired</span>
+        <span class="p">}</span>
+        <span class="nx">m</span><span class="p">.</span><span class="nx">hdr</span> <span class="p">=</span> <span class="nx">gresp</span><span class="p">.</span><span class="nx">Header</span>
+
+        <span class="k">return</span> <span class="kc">nil</span>
+    <span class="p">}</span>
+
+    <span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Mutex</span><span class="p">)</span> <span class="nf">tryAcquire</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">v3</span><span class="p">.</span><span class="nx">TxnResponse</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">s</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">s</span>
+        <span class="nx">client</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">s</span><span class="p">.</span><span class="nf">Client</span><span class="p">(</span><span class="p">)</span>
+        <span class="c1">// 以参数 lockkey+leaseID 作为该客户端锁的全局唯一标识
+</span><span class="c1"></span>        <span class="c1">// 如果该锁不存在则创建，否则直接获取，取得该键值的create version 同时请求以lockkey为前缀的所有键值
+</span><span class="c1"></span>        <span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%s%x&#34;</span><span class="p">,</span> <span class="nx">m</span><span class="p">.</span><span class="nx">pfx</span><span class="p">,</span> <span class="nx">s</span><span class="p">.</span><span class="nf">Lease</span><span class="p">(</span><span class="p">)</span><span class="p">)</span>
+        <span class="nx">cmp</span> <span class="o">:=</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">Compare</span><span class="p">(</span><span class="nx">v3</span><span class="p">.</span><span class="nf">CreateRevision</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span><span class="p">)</span><span class="p">,</span> <span class="s">&#34;=&#34;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c1">// put self in lock waiters via myKey; oldest waiter holds lock
+</span><span class="c1"></span>        <span class="nx">put</span> <span class="o">:=</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">OpPut</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">WithLease</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nf">Lease</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span>
+        <span class="c1">// reuse key in case this session already holds the lock
+</span><span class="c1"></span>        <span class="nx">get</span> <span class="o">:=</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">OpGet</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span><span class="p">)</span>
+        <span class="c1">// fetch current holder to complete uncontended path with only one RPC
+</span><span class="c1"></span>        <span class="nx">getOwner</span> <span class="o">:=</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">OpGet</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">pfx</span><span class="p">,</span> <span class="nx">v3</span><span class="p">.</span><span class="nf">WithFirstCreate</span><span class="p">(</span><span class="p">)</span><span class="o">...</span><span class="p">)</span>
+        <span class="nx">resp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">client</span><span class="p">.</span><span class="nf">Txn</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span><span class="p">.</span><span class="nf">If</span><span class="p">(</span><span class="nx">cmp</span><span class="p">)</span><span class="p">.</span><span class="nf">Then</span><span class="p">(</span><span class="nx">put</span><span class="p">,</span> <span class="nx">getOwner</span><span class="p">)</span><span class="p">.</span><span class="nf">Else</span><span class="p">(</span><span class="nx">get</span><span class="p">,</span> <span class="nx">getOwner</span><span class="p">)</span><span class="p">.</span><span class="nf">Commit</span><span class="p">(</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+        <span class="p">}</span>
+        <span class="nx">m</span><span class="p">.</span><span class="nx">myRev</span> <span class="p">=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Header</span><span class="p">.</span><span class="nx">Revision</span>
+        <span class="k">if</span> <span class="p">!</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Succeeded</span> <span class="p">{</span>
+            <span class="nx">m</span><span class="p">.</span><span class="nx">myRev</span> <span class="p">=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">Responses</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="p">.</span><span class="nf">GetResponseRange</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nx">Kvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="p">.</span><span class="nx">CreateRevision</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nx">resp</span><span class="p">,</span> <span class="kc">nil</span>
+    <span class="p">}</span>
+</code></pre></div><ul>
+<li>解锁</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go">    <span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Mutex</span><span class="p">)</span> <span class="nf">Unlock</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+        <span class="nx">client</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">s</span><span class="p">.</span><span class="nf">Client</span><span class="p">(</span><span class="p">)</span>
+        <span class="c1">// 直接删除该客户端对应锁的键值并将锁的本地reversion置为-1
+</span><span class="c1"></span>        <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">client</span><span class="p">.</span><span class="nf">Delete</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span><span class="p">)</span><span class="p">;</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">err</span>
+        <span class="p">}</span>
+        <span class="nx">m</span><span class="p">.</span><span class="nx">myKey</span> <span class="p">=</span> <span class="s">&#34;\x00&#34;</span>
+        <span class="nx">m</span><span class="p">.</span><span class="nx">myRev</span> <span class="p">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">return</span> <span class="kc">nil</span>
+    <span class="p">}</span>
+</code></pre></div></li>
+</ol>
+<h2 id="小结">小结</h2>
+<ol>
+<li>
+<p>使用ETCD分布式锁 <em>concurrency.Mutex</em> 时，一定要加上 <em>concurrency.Session</em>, 避免程序或网络发生异常导致死锁</p>
+</li>
+<li>
+<p>对于 <em>session.Done</em> 的触发机制要注意，本地deadline检测的依据是 timer &gt; TTL + 网络延时，这时服务器可能早已删除了对应的Key。如果本地客户端在这个差异时间内依然持有锁并做一些操作的话，可能会让锁失效。</p>
+</li>
+</ol>
+</article><section class="article labels"><a class="article category" href=/myblog/categories/%E5%85%A5%E9%97%A8/><span class="hashtag">#</span>入门</a><a class="article tag" href=/myblog/tags/etcd/><span class="hashtag">#</span>etcd</a><a class="article tag" href=/myblog/tags/golang/><span class="hashtag">#</span>Golang</a><a class="article tag" href=/myblog/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/><span class="hashtag">#</span>分布式锁</a></section><section class="article navigation"><p><a class="link" href="/myblog/post/golang-sync-pattern/"><span class="li"></span>Golang 两种同步变量的实现方式</a class="link">
+    </p></section></div><section id="footer" class="footer max-body-width"><div class="footer-wrap">
+    <p class="copyright">HeQing's Blog</p>
+    <p class="powerby"><span>Powered by </span><a href="https://gohugo.io" 
+        target="_blank">Hugo</a><span> and the </span><a href="https://themes.gohugo.io/hugo-notepadium/" 
+        target="_blank">Notepadium</a></p>
+</div></section></div>
+</body>
+
+</html>

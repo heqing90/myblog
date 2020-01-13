@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>分布式锁 on HeQing&#39;s Blog</title>
+    <link>https://heqing90.github.io/myblog/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/</link>
+    <description>Recent content in 分布式锁 on HeQing&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 13 Jan 2020 16:15:23 +0800</lastBuildDate>
+    
+	<atom:link href="https://heqing90.github.io/myblog/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Etcd client V3 分布式锁实现方式</title>
+      <link>https://heqing90.github.io/myblog/post/etcd-go-distributed-lock/</link>
+      <pubDate>Mon, 13 Jan 2020 16:15:23 +0800</pubDate>
+      
+      <guid>https://heqing90.github.io/myblog/post/etcd-go-distributed-lock/</guid>
+      <description>原理 客户端以统一前缀（比如/mylock）创建全局唯一Key（client 1 -&amp;gt; /mylock/client-1-uuid, client 2 -&amp;gt; /mylock/client-2-uuid ）。 为该Key绑定租约(lease)，并设定TTL，</description>
+    </item>
+    
+  </channel>
+</rss>
