@@ -110,7 +110,7 @@
           pthread_rwlock_t	 gp_rwlock; /* protect all fields above */
       };
     ```
-    - ### primary
+    - ### primary: 集群内所有RANK的集合
       - 在crt初始化流程中调用crt_primary_grp_init创建gg_primary_grp
         - gp_membs(members)
           - cgm_list: 所有rank集合
@@ -121,7 +121,14 @@
               - grp_add_to_membs_list: 添加至cgm_list并更新cgm_linear_list
               - crt_grp_lc_uri_insert: 将所有crt context与该rank uri地址信息记入本地cache
             - crt_group_primary_modify: server Raft集群leader更新触发/join Timer触发/失败后会重试 (joinLoop:doGroupUpdate)
-    - ### secondary
+    - ### secondary: 一个Pool(ds pool)内的RANK集合
+      - 创建(ds_mgmt_hdlr_tgt_create->pool_alloc_ref)/加载(ds_pool_start_all)Pool时创建secondary group
+      - 更新流程
+        - ds_pool_tgt_map_update，iv条件触发(poolmap变更)
+          - update_pool_group(UP/UPIN/DRAIN)
+        - 生成 Secondary <->Primary rank map 映射表
+          - gp_p2s_table
+          - gp_s2p_table
 - # Pool
 - # Container
 - # Obj
