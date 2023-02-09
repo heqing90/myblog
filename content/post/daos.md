@@ -136,6 +136,9 @@
       - pool_svc_map_dist_cb
         - rbd commit后触发ds_pool_iv_map_update
         - crt_ivsync_rpc_issue/crt_ivu_rpc_issue组播更新？
+- # Placement
+  - ## poolmap
+  - ## jumphash
 - # Pool
 - # Container
 - # Obj
