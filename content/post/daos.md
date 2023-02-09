@@ -129,6 +129,13 @@
         - 生成 Secondary <->Primary rank map 映射表
           - gp_p2s_table
           - gp_s2p_table
+  - ## crt IV
+    - map_distd: map分发ULT,等待唤醒s_map_dist_cv(ds_pool_extend_handler,ds_pool_update_handler,pool_svc_exclude_rank)
+      - mgmt_svc_map_dist_cb
+        - Primary Group内组播MGMT_TGT_MAP_UPDATE消息
+      - pool_svc_map_dist_cb
+        - rbd commit后触发ds_pool_iv_map_update
+        - crt_ivsync_rpc_issue/crt_ivu_rpc_issue组播更新？
 - # Pool
 - # Container
 - # Obj
