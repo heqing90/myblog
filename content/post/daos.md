@@ -40,75 +40,75 @@
       };
       ```
   - ## crt group
-    - ### 数据结构
+    - 数据结构
     ```c
-        // crt_gdata.cg_grp.gg_primary_grp
-        struct crt_grp_priv {
-          d_list_t		 gp_link; /* link to crt_grp_list */
-          crt_group_t		 gp_pub; /* public grp handle */
+    // crt_gdata.cg_grp.gg_primary_grp
+    struct crt_grp_priv {
+      d_list_t		 gp_link; /* link to crt_grp_list */
+      crt_group_t		 gp_pub; /* public grp handle */
 
-          /* Link to a primary group; only set for secondary groups  */
-          struct crt_grp_priv	*gp_priv_prim;
+      /* Link to a primary group; only set for secondary groups  */
+      struct crt_grp_priv	*gp_priv_prim;
 
-          /* List of secondary groups associated with this group */
-          d_list_t		gp_sec_list;
+      /* List of secondary groups associated with this group */
+      d_list_t		gp_sec_list;
 
-          /*
-           * member ranks, should be unique and sorted, each member is the rank
-           * number within the primary group.
-           */
-          struct crt_grp_membs	gp_membs;
-          /*
-           * the version number of the group. Set my crt_group_version_set or
-           * crt_group_mod APIs.
-           */
-          uint32_t		 gp_membs_ver;
-          /*
-           * this structure contains the circular list of member ranks.
-           * It's used to store SWIM related information and should strictly
-           * correspond to members in gp_membs.
-           */
-          struct crt_swim_membs	 gp_membs_swim;
+      /*
+       * member ranks, should be unique and sorted, each member is the rank
+       * number within the primary group.
+       */
+      struct crt_grp_membs	gp_membs;
+      /*
+       * the version number of the group. Set my crt_group_version_set or
+       * crt_group_mod APIs.
+       */
+      uint32_t		 gp_membs_ver;
+      /*
+       * this structure contains the circular list of member ranks.
+       * It's used to store SWIM related information and should strictly
+       * correspond to members in gp_membs.
+       */
+      struct crt_swim_membs	 gp_membs_swim;
 
-          /* size (number of membs) of group */
-          uint32_t		 gp_size;
-          /*
-           * logical self rank in this group, only valid for local group.
-           * the gp_membs->rl_ranks[gp_self] is its rank number in primary group.
-           * For primary group, gp_self == gp_membs->rl_ranks[gp_self].
-           * If gp_self is CRT_NO_RANK, it usually means the group version is not
-           * up to date.
-           */
-          d_rank_t		 gp_self;
-          /* List of PSR ranks */
-          d_rank_list_t		 *gp_psr_ranks;
-          /* PSR rank in attached group */
-          d_rank_t		 gp_psr_rank;
-          /* PSR phy addr address in attached group */
-          crt_phy_addr_t		 gp_psr_phy_addr;
-          /* address lookup cache, only valid for primary group */
-          struct d_hash_table	 *gp_lookup_cache;
+      /* size (number of membs) of group */
+      uint32_t		 gp_size;
+      /*
+       * logical self rank in this group, only valid for local group.
+       * the gp_membs->rl_ranks[gp_self] is its rank number in primary group.
+       * For primary group, gp_self == gp_membs->rl_ranks[gp_self].
+       * If gp_self is CRT_NO_RANK, it usually means the group version is not
+       * up to date.
+       */
+      d_rank_t		 gp_self;
+      /* List of PSR ranks */
+      d_rank_list_t		 *gp_psr_ranks;
+      /* PSR rank in attached group */
+      d_rank_t		 gp_psr_rank;
+      /* PSR phy addr address in attached group */
+      crt_phy_addr_t		 gp_psr_phy_addr;
+      /* address lookup cache, only valid for primary group */
+      struct d_hash_table	 *gp_lookup_cache;
 
-          /* uri lookup cache, only valid for primary group */
-          struct d_hash_table	 gp_uri_lookup_cache;
+      /* uri lookup cache, only valid for primary group */
+      struct d_hash_table	 gp_uri_lookup_cache;
 
-          /* Primary to secondary rank mapping table */
-          struct d_hash_table	 gp_p2s_table;
+      /* Primary to secondary rank mapping table */
+      struct d_hash_table	 gp_p2s_table;
 
-          /* Secondary to primary rank mapping table */
-          struct d_hash_table	 gp_s2p_table;
+      /* Secondary to primary rank mapping table */
+      struct d_hash_table	 gp_s2p_table;
 
-          /* set of variables only valid in primary service groups */
-          uint32_t		 gp_primary:1, /* flag of primary group */
-                 gp_view:1, /* flag to indicate it is a view */
-                /* Auto remove rank from secondary group */
-                 gp_auto_remove:1;
+      /* set of variables only valid in primary service groups */
+      uint32_t		 gp_primary:1, /* flag of primary group */
+             gp_view:1, /* flag to indicate it is a view */
+            /* Auto remove rank from secondary group */
+             gp_auto_remove:1;
 
-          /* group reference count */
-          uint32_t		 gp_refcount;
+      /* group reference count */
+      uint32_t		 gp_refcount;
 
-          pthread_rwlock_t	 gp_rwlock; /* protect all fields above */
-      };
+      pthread_rwlock_t	 gp_rwlock; /* protect all fields above */
+    };
     ```
     - ### primary: 集群内所有RANK的集合
       - 在crt初始化流程中调用crt_primary_grp_init创建gg_primary_grp
@@ -137,8 +137,86 @@
         - rbd commit后触发ds_pool_iv_map_update
         - crt_ivsync_rpc_issue/crt_ivu_rpc_issue组播更新？
 - # Placement
-  - ## poolmap
-  - ## jumphash
+  - ## pool map
+    - 数据结构
+    ```c
+    struct pool_map {
+      /** protect the refcount */
+      pthread_mutex_t		 po_lock;
+      /** Current version of pool map */
+      uint32_t		 po_version;
+      /** refcount on the pool map */
+      int			 po_ref;
+      /** # domain layers */
+      unsigned int		 po_domain_layers;
+      /**
+       * Sorters for the binary search of different domain types.
+       * These sorters are in ascending order for binary search of sorters.
+       */
+      struct pool_comp_sorter	*po_domain_sorters;
+      /** sorter for binary search of target */
+      struct pool_comp_sorter	 po_target_sorter;
+      /**
+       * Tree root of all components.
+       * NB: All components must be stored in contiguous buffer.
+       */
+      struct pool_domain	*po_tree;
+      /**
+       * number of currently failed pool components of each type
+       * of component found in the pool
+       */
+      struct pool_fail_comp	*po_comp_fail_cnts;
+      /* Current least in version from all UP/NEW targets. */
+      uint32_t		po_in_ver;
+      /* Current least fseq version from all DOWN targets. */
+      uint32_t		po_fseq;
+    };
+    
+    struct pl_jump_map {
+      /** placement map interface */
+      struct pl_map		jmp_map;
+      /* Total size of domain type specified during map creation */
+      unsigned int		jmp_domain_nr;
+      /* # UPIN targets */
+      unsigned int		jmp_target_nr;
+      /* The dom that will contain no colocated shards */
+      pool_comp_type_t	jmp_redundant_dom;
+    };
+    ```
+    - domain
+    - component
+    - state: UP, UP_IN, DOWN, DOWN_OUT, NEW, DRAIN, UNKNOWN
+    - 创建/变更
+      - ds_pool_create_handler->init_pool_metadata 触发 gen_pool_buf 产生初始化poolmap并持久化到rdb
+        - PoolCreate
+          - FaultDomainTree
+      - ds_pool_tgt_map_update: poolmap 变更流程触发
+  - ## placement map
+    - ### jumpmap
+      - 数据结构
+      ```c
+      struct pl_map {
+        /** corresponding pool uuid */
+        uuid_t			 pl_uuid;
+        /** link chain on hash */
+        d_list_t		 pl_link;
+        /** protect refcount */
+        pthread_spinlock_t	 pl_lock;
+        /** refcount */
+        int			 pl_ref;
+        /** pool connections, protected by pl_rwlock */
+        int			 pl_connects;
+        /** type of placement map */
+        pl_map_type_t		 pl_type;
+        /** reference to pool map */
+        struct pool_map		*pl_poolmap;
+        /** placement map operations */
+        struct pl_map_ops       *pl_ops;
+      };
+      ```
+      - 创建
+        - jump_map_create 
+      - jumphash
 - # Pool
 - # Container
 - # Obj
