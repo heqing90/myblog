@@ -183,13 +183,29 @@
       pool_comp_type_t	jmp_redundant_dom;
     };
     ```
-    - domain
+    - fault domain
+      - 命名: getDefaultFaultDomain->hostname: "/<hostname>" lowercase
+      - createEngine获取配置或默认，调用systemJoin加入集群
     - component
     - state: UP, UP_IN, DOWN, DOWN_OUT, NEW, DRAIN, UNKNOWN
     - 创建/变更
       - ds_pool_create_handler->init_pool_metadata 触发 gen_pool_buf 产生初始化poolmap并持久化到rdb
         - PoolCreate
-          - FaultDomainTree
+          - FaultDomainTree: domain元组 -> <level, ID, number of children>
+          ```shell
+                      ┌──────────┐
+                      │  root    │
+                   ┌──┴──────────┴───┐
+                   │                 │
+              ┌────▼───┐          ┌──▼─────┐
+              │ node1  │          │ node2  │
+              ├────────┴─┐        └─┬──────┴┐
+              │          │          │       │
+              │          │          │       │
+           ┌──▼────┐ ┌───▼───┐ ┌────▼──┐  ┌─▼─────┐
+           │rank0  │ │rank1  │ │rank2  │  │rank3  │
+           └───────┘ └───────┘ └───────┘  └───────┘
+          ```
       - ds_pool_tgt_map_update: poolmap 变更流程触发
   - ## placement map
     - ### jumpmap
