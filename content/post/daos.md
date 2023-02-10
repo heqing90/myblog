@@ -191,7 +191,7 @@
     - 创建/变更
       - ds_pool_create_handler->init_pool_metadata 触发 gen_pool_buf 产生初始化poolmap并持久化到rdb
         - PoolCreate
-          - FaultDomainTree: domain元组 -> <level, ID, number of children>
+          - FaultDomainTree: 
           ```shell
                       ┌──────────┐
                       │  root    │
@@ -206,6 +206,7 @@
            │rank0  │ │rank1  │ │rank2  │  │rank3  │
            └───────┘ └───────┘ └───────┘  └───────┘
           ```
+          - compressed domain tree 元组 -> <level, ID, number of children>
       - ds_pool_tgt_map_update: poolmap 变更流程触发
   - ## placement map
     - ### jumpmap
