@@ -207,6 +207,21 @@
            └───────┘ └───────┘ └───────┘  └───────┘
           ```
           - compressed domain tree 元组 -> <level, ID, number of children>
+          ```c
+          struct d_fault_domain {
+            uint32_t fd_level;	/** level in the fault domain tree >= 1 */
+            uint32_t fd_id;		/** unique ID */
+            uint32_t fd_children_nr; /** number of children */
+          };
+          // uint32_t array
+          // |2,root,2||1,node1,2|1,node2,2|rand0|rank1|rank2|rank3|
+          ```
+          - pool map
+            - map buffer(忽略root节点)
+            ```c
+            // layout on disk
+            //|strct pool_component(domain)|struct pool_component(rank)|struct pool_component(target)|
+            ```
       - ds_pool_tgt_map_update: poolmap 变更流程触发
   - ## placement map
     - ### jumpmap
