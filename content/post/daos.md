@@ -224,7 +224,7 @@
             ```
       - ds_pool_tgt_map_update: poolmap 变更流程触发
   - ## placement map
-    - ### jumpmap
+    - ### jump map
       - 数据结构
       ```c
       struct pl_map {
@@ -245,9 +245,23 @@
         /** placement map operations */
         struct pl_map_ops       *pl_ops;
       };
+  
+      struct pl_jump_map {
+        /** placement map interface */
+        struct pl_map		jmp_map;
+        /* Total size of domain type specified during map creation */
+        unsigned int		jmp_domain_nr;
+        /* # UPIN targets */
+        unsigned int		jmp_target_nr;
+        /* The dom that will contain no colocated shards */
+        pool_comp_type_t	jmp_redundant_dom;
+      };
       ```
       - 创建
-        - jump_map_create 
+        - ds_pool_tgt_map_update 触发 pl_map_update
+          - jump_map_create: 根据pool map创建新的placement map
+            - redundant domain: 故障域默认为node
+            - find all upin target, 查找当前poolmap中所有状态为UPIN的target
       - jumphash
 - # Pool
 - # Container
