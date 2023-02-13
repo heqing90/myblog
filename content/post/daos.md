@@ -279,7 +279,7 @@
             - find all upin target, 查找当前poolmap中所有状态为UPIN的target
           - obj_layout_create: client端open对象时创建该对象对应的placement map layout
             - jump_map_obj_place: 决定该obj的数据分布
-              - get_object_layout: 对每一个group选group size个target
+              - get_object_layout: 对每一个group选group size个target[<1,2,3>,<4,5,6>,<7,8,9>]
                 - get_target: 依据shard递归选取一个target,crc(obj_key, shard_num/fail_num)避免重复
       - jumphash
       ```c
@@ -298,6 +298,12 @@
         return z;
       }
       ```
+      - obj -> dk -> shard target: 依据DK从对象group layout选出冗余target
+        - obj_update_shards_get: 
+          - 副本: dk-> dk hash -> group idx: 用jump hash算法映射dk hash到对应group
+          - EC: tgt_bitmap
+        - obj_shards_2_fwtgts: 选出leader target(lower f_seq and healthy)
+        
 - # Pool
 - # Container
 - # Obj
