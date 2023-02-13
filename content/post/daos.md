@@ -256,13 +256,48 @@
         /* The dom that will contain no colocated shards */
         pool_comp_type_t	jmp_redundant_dom;
       };
+  
+      struct pl_obj_shard {
+        uint32_t	po_shard;	/* shard identifier */
+        uint32_t	po_target;	/* target id */
+        uint32_t	po_fseq;	/* The latest failure sequence */
+        uint32_t	po_rebuilding:1, /* rebuilding status */
+            po_reintegrating:1; /* reintegrating status */
+      };
+      struct pl_obj_layout {
+        uint32_t		 ol_ver;
+        uint32_t		 ol_grp_size;// target count per group
+        uint32_t		 ol_grp_nr; // total group count
+        uint32_t		 ol_nr;
+        struct pl_obj_shard	*ol_shards;
+      };
       ```
       - 创建
         - ds_pool_tgt_map_update 触发 pl_map_update
           - jump_map_create: 根据pool map创建新的placement map
             - redundant domain: 故障域默认为node
             - find all upin target, 查找当前poolmap中所有状态为UPIN的target
+          - obj_layout_create: client端open对象时创建该对象对应的placement map layout
+            - jump_map_obj_place: 决定该obj的数据分布
+              - get_object_layout: 对每一个group选group size个target
+                - get_target: 依据shard递归选取一个target,crc(obj_key, shard_num/fail_num)避免重复
       - jumphash
+      ```c
+      uint32_t
+      d_hash_jump(uint64_t key, uint32_t num_buckets)
+      {
+        int64_t z = -1;
+        int64_t y = 0;
+
+        while (y < num_buckets) {
+          z = y;
+          key = key * 2862933555777941757ULL + 1;
+          y = (z + 1) * ((double)(1LL << 31) /
+                   ((double)((key >> 33) + 1)));
+        }
+        return z;
+      }
+      ```
 - # Pool
 - # Container
 - # Obj
