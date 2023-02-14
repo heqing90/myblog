@@ -314,4 +314,12 @@
 - # RDB
   - ## Raft
 - # RSVC
+  - ds_mgmt_create_pool 控制面创建pool时调用ds_mgmt_pool_svc_create启动RSVC服务
+    - select_svc_ranks: 选取副本数(rf*2+1) 冗余因子*2 + 1(未考虑故障域即target可能在同一个rank下)
+    - ds_rsvc_dist_start: 广播RSVC_START到选取的副本target上，创建副本服务
+      - ds_rsvc_start
+        - rdb_create: 创建rdb服务实例并启动
+          - vos_pool_create: 创建pool(uuid)对应的rdb vos pool, 无NVME存储
+          - vos_cont_create: 创建pool(uuid)对应的rdb vos cont
+          - rdb_raft_init
 - # Rebuild
