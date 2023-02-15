@@ -312,7 +312,63 @@
   - ## SMD
 - # VEA
 - # RDB
+  - ## key space of a database
+    ```c
+    *   rdb_path_root_key {
+    *       "containers" {
+    *           5742bdea-90e2-4765-ad74-b7f19cb6d78f {
+    *               "ghce"
+    *               "ghpce"
+    *               "lhes" {
+    *                   5
+    *                   12349875
+    *               }
+    *               "lres" {
+    *                   0
+    *                   10
+    *               }
+    *               "snapshots" {
+    *               }
+    *               "user.attr_a"
+    *               "user.attr_b"
+    *           }
+    *       }
+    *       "container_handles" {
+    *           b0733249-0c9a-471b-86e8-027bcfccc6b1
+    *           92ccc99c-c755-45f4-b4ee-78fd081e54ca
+    *       }
+    *   }
+    ```
+  - ## service
+    - rdb_create
+    - rdb_start
+    - rdb_stop
+    - Path: path 是一个keys组成的链表，绝对路径从rdb_path_root_key(代表root KVS)开始
+      - rdb_path_init
+      - rdb_path_clone
+      - rdb_path_push: 将指定key插入到指定path的尾部
+        - 字节流 stream buffer format: [<len1, key1, len1>] -> buffer: [<len1, key1, len1>, <len2, key2, len2>]
+      - rdb_path_fini
+  - ## transaction
+    - 调用约束
+    ```c
+    * Caller locking rules:
+     *
+     *   rdb_tx_begin()
+     *   rdlock(rl)
+     *   rdb_tx_<query>()
+     *   rdb_tx_<update>()
+     *   wrlock(wl)		// must before commit(); may not cover update()s
+     *   rdb_tx_commit()
+     *   unlock(wl)		// must after commit()
+     *   unlock(rl)		// must after all {rd,wr}lock()s; may before commit()
+     *   rdb_tx_end()
+    ```
   - ## Raft
+    - state
+      - RAFT_STATE_LEADER
+      - RAFT_STATE_FOLLOWER
+      - RAFT_STATE_CANDIDATE
 - # RSVC
   - 数据结构
   ```c
