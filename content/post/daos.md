@@ -321,5 +321,6 @@
         - rdb_create: 创建rdb服务实例并启动
           - vos_pool_create: 创建pool(uuid)对应的rdb vos pool, 无NVME存储
           - vos_cont_create: 创建pool(uuid)对应的rdb vos cont
-          - rdb_raft_init
+          - rdb_raft_init: 创建raft log container
+          - rdb_open_internal： 构建rdb句柄，分配SCM空间（rdb池只几SCM）
 - # Rebuild
