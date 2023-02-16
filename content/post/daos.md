@@ -387,6 +387,9 @@
   - rdb_tx_lookup: 从本地vos db中读取数据，用LRU cache增加查询效率
   - rdb_tx_update: 生成update op，调用rdb_tx_append以字节流形式挂到tx buffer尾部
   - rdb_tx_commit: 调用rdb_raft_append_apply，执行raft log replication
+    - 发起端调用 rbd_raft_cb_send_appendentries RPC方式法送RDB_APPENDENTRIES消息
+    - 接收端调用 raft_append_entries 同步日志
+    - log_append 触发log_offer回调执行rdb_raft_log_offer更新tx事务日志到vos(rdb_tx_apply)
   - rdb_tx_end: 释放db实例，释放tx dt_entry内存空间
   - ## Raft
     - state
