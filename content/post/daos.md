@@ -363,7 +363,31 @@
      *   unlock(wl)		// must after commit()
      *   unlock(rl)		// must after all {rd,wr}lock()s; may before commit()
      *   rdb_tx_end()
+  
+    /* Update operation codes */
+    enum rdb_tx_opc {
+      RDB_TX_INVALID		= 0,
+      RDB_TX_CREATE_ROOT	= 1,
+      RDB_TX_DESTROY_ROOT	= 2,
+      RDB_TX_CREATE		= 3,
+      RDB_TX_DESTROY		= 4,
+      RDB_TX_UPDATE		= 5,
+      RDB_TX_DELETE		= 6,
+      RDB_TX_LAST_OPC		= UINT8_MAX
+    };
+    struct rdb_tx_op {
+      enum rdb_tx_opc		dto_opc;
+      rdb_path_t		dto_kvs;
+      d_iov_t			dto_key;
+      d_iov_t			dto_value;
+      struct rdb_kvs_attr    *dto_attr;
+    };
     ```
+  - rdb_tx_begin: 获取rdb实例句柄（ref+1），获取该rdb实例的tx实例（并发处理？）
+  - rdb_tx_lookup: 从本地vos db中读取数据，用LRU cache增加查询效率
+  - rdb_tx_update: 生成update op，调用rdb_tx_append以字节流形式挂到tx buffer尾部
+  - rdb_tx_commit: 调用rdb_raft_append_apply，执行raft log replication
+  - rdb_tx_end: 释放db实例，释放tx dt_entry内存空间
   - ## Raft
     - state
       - RAFT_STATE_LEADER
