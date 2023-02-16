@@ -312,6 +312,7 @@
   - ## vos pool
   - ## vos container
   - ## vos object
+  - ## daos btree
   - ## evtree
   - ## vos dtx
   - ## vos tree
