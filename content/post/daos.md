@@ -309,13 +309,20 @@
 - # Obj
 - # VOS
   - ## layout
-  - ## vos pool
+  - ## vos pool: 内存结构
+    - vos_pool_create
+    - 创建pmemobj实例（pmem，bmem）
+    - 创建pool/cont 持久化B+tree实例(vos_pool_df, btr_root(pd_cont_root))
+    - 初始化GC bin，初始化VEA
+    - mlock，lock memory(scm size)
   - ## vos container
   - ## vos object
   - ## daos btree
   - ## evtree
+    - ### R-tree
   - ## vos dtx
   - ## vos tree
+  - ## ilog: Incarnation log wrappers for fetching the log and checking existence
   - ## vos timestamp: record timestamp table
 - # BIO
   - ## SMD
