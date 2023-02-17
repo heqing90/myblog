@@ -316,13 +316,18 @@
     - 初始化GC bin，初始化VEA
     - mlock，lock memory(scm size)
   - ## vos container
+    - vos_cont_create: 在vos pool下创建container实例，以dbtree形式管理（持久化结构）
   - ## vos object
+    - vos_obj_hold: 获取vos obj,先从lru cache查找，在从pmem查找，如果没有可以新建
   - ## daos btree
   - ## evtree
     - ### R-tree
   - ## vos dtx
   - ## vos tree
   - ## ilog: Incarnation log wrappers for fetching the log and checking existence
+    - cache
+    - dkey
+    - akey
   - ## vos timestamp: record timestamp table
 - # BIO
   - ## SMD
