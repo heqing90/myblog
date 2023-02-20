@@ -325,6 +325,10 @@
   - ## vos dtx
   - ## vos tree
   - ## ilog: Incarnation log wrappers for fetching the log and checking existence
+    - vos_ilog_update
+    - vos_ilog_fetch
+    - vos_ilog_punch
+    - vos_ilog_check
     - cache
     - dkey
     - akey
