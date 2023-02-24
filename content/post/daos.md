@@ -335,6 +335,28 @@
   - ## vos timestamp: record timestamp table
 - # BIO
   - ## SMD
+    - sys_db
+  - init 初始化
+    - bio_nvme_init: nvme_conf, shm_id, mem_size, hugepage_size, 服务进程初始化流程
+      - spdk_bs_opts_init
+        - cluster_sz: 1GB
+        - num_md_pages: 20K, blobs per devices
+        - max_channel_ops: 4K, max inflight blob IOs per io channel
+      - bio_spdk_env_init
+        - spdk_env_opts_init: options 设置
+        - spdk_env_init: 注册dpdk驱动
+        - spdk_unaffinitize_thread: remove 当前线程亲和性
+        - spdk_thread_lib_init
+          - spdk_mempool_create:  g_spdk_msg_mempool, spdk_msg
+    - bio_xsctxt_alloc: bio context 首次初始化流程,Main XS
+      - spdk_thread_create: 创建spdk thread抽象，bxc_thread -- spdk tls_thread
+      - spdk_subsystem_init_from_json_config: 用nvme_conf配置加载所有BDEV
+      - init_bio_bdevs
+        - create_bio_bdev
+          - spdk_bdev_open_ext: spdk_bdev_desc, bb_desc
+          - load_blobstore
+            - spdk_bdev_create_bs_dev_ext
+            - spdk_bs_init/spdk_load
 - # VEA
 - # RDB
   - ## key space of a database
