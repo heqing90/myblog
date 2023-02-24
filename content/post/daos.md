@@ -357,6 +357,16 @@
           - load_blobstore
             - spdk_bdev_create_bs_dev_ext
             - spdk_bs_init/spdk_load
+          - unload_blobstore
+      - init_blobstore_ctxt
+        - bio_init_health_monitoring: 盘健康监控服务
+        - load_blobstore
+        - spdk_thread_send_msg: transit BS state to SETUP
+        - spdk_bs_alloc_io_channel: open IO channel for xstream
+        - dma_buffer_create: 每个XS 32 chunks, 每个chunk 8M, 共2048个4K page
+          - dma_alloc_chunk: bxc_dma_buf
+            - spdk_dma_malloc
+              - bio_chk_sz: 8M/4K, 2048
 - # VEA
 - # RDB
   - ## key space of a database
