@@ -307,6 +307,28 @@
 - # Pool
 - # Container
 - # Obj
+  - ## layout
+    ```shell
+    
+     redun user.high(32)
+        │    │
+        ▼    ▼
+     ┌─┬─┬──┬─┬────────┐
+     │8│8│16│ │        │
+     └─┴─┴──┴─┴────────┘
+      ▲    ▲     ▲
+      │    │     │
+   otype nr_grps user.low(64)
+
+    ```
+  - generate oid 流程
+    - oid_gen: 批量申请，且解决并发冲突
+      - user.low: 用户低64位调用RPC到daos engine获取,每次获取一个low oid
+        - ds_cont_oid_alloc_handler(CONT_OID_ALLOC)
+          - oid_iv_reserve
+            - oid_iv_ent_update: oid自增
+      - user.high: 用户高32位由上层自增（类批量申请2^32）
+      - daos_obj_generate_oid: 设置otype(object class), redun(冗余类型), nr_grps(group个数<target_nr/grp_size>)
 - # VOS
   - ## layout
   - ## vos pool: 内存结构
