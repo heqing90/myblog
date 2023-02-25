@@ -377,6 +377,24 @@
     - bio_xsctxt_alloc: bio context 首次初始化流程,Main XS
       - spdk_thread_create: 创建spdk thread抽象，bxc_thread -- spdk tls_thread
       - spdk_subsystem_init_from_json_config: 用nvme_conf配置加载所有BDEV
+        - rpc_bdev_nvme_attach_controller
+          - bdev_nvme_create(rpc_bdev_nvme_attach_controller_done)
+            - spdk_nvme_connect_aync(connect_attach_cb)
+              - nvme_driver_init
+              - nvme_probe_ctx_init
+              - nvme_probe_internal
+                - connect_attach_cb
+                  - nvme_ctrlr_get_by_name
+                  - nvme_ctrlr_create
+                    - nvme_ctrlr_create_done
+                      - spdk_io_device_register(nvme_ctrlr)
+                      - nvme_ctrlr_populate_namespaces: 枚举nvme ctrlr下所有ns，并创建BDEV
+                        - nvme_ctrlr_populate_namespace
+                          - nvme_ctrlr_populdate_standard_namespace
+                            - nvme_bdev_create: bdev
+                              - nvme_disk_create(ns): bdev->disk
+                              - spdk_io_device_register(bdev)
+                              - spdk_bdev_register(bdev->disk)
       - init_bio_bdevs
         - create_bio_bdev
           - spdk_bdev_open_ext: spdk_bdev_desc, bb_desc
@@ -393,6 +411,16 @@
           - dma_alloc_chunk: bxc_dma_buf
             - spdk_dma_malloc
               - bio_chk_sz: 8M/4K, 2048
+  - IO stack
+    - nvme_rw: write
+      - drain_inflight_ios
+      - spdk_blob_io_write
+        - bio_request_submit_op
+          - blob_calculate_lba_and_lba_count
+          - bs_batch_open
+          - bs_batch_write_dev
+            - channel->dev->write
+          - bs_batch_close
 - # VEA
 - # RDB
   - ## key space of a database
