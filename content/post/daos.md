@@ -308,18 +308,16 @@
 - # Container
 - # Obj
   - ## layout
-    ```shell
-    
-     redun user.high(32)
-        │    │
-        ▼    ▼
-     ┌─┬─┬──┬─┬────────┐
-     │8│8│16│ │        │
-     └─┴─┴──┴─┴────────┘
-      ▲    ▲     ▲
-      │    │     │
-   otype nr_grps user.low(64)
-
+    ```shell  
+       redun user.high(32)
+          │    │
+          ▼    ▼
+       ┌─┬─┬──┬─┬────────┐
+       │8│8│16│ │        │
+       └─┴─┴──┴─┴────────┘
+        ▲    ▲     ▲
+        │    │     │
+     otype nr_grps user.low(64)
     ```
   - generate oid 流程
     - oid_gen: 批量申请，且解决并发冲突
