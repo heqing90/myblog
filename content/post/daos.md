@@ -434,6 +434,7 @@
                         - bdev_nvme_submit_request
                           - bdev_nvme_writev(qpair)
                             - nvme_qpair_submit_request
+                              - nvme_pcie_qpair_submit_tracker
           - bs_batch_close
 - # VEA
 - # RDB
