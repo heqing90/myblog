@@ -400,6 +400,10 @@
           - spdk_bdev_open_ext: spdk_bdev_desc, bb_desc
           - load_blobstore
             - spdk_bdev_create_bs_dev_ext
+              - spdk_bdev_open_ext
+              - blob_bdev_init
+                - read : bdev_blob_read
+                - write : bdev_blob_write
             - spdk_bs_init/spdk_load
           - unload_blobstore
       - init_blobstore_ctxt
@@ -420,6 +424,16 @@
           - bs_batch_open
           - bs_batch_write_dev
             - channel->dev->write
+              - bdev_blob_write
+                - spdk_bdev_write_blocks
+                  - bdev_channel_get_io
+                  - bdev_io_init
+                  - bdev_io_submit
+                    - bdev_io_do_submit
+                      - bdev->fn_table->submit_request: nvmelib_fn_table
+                        - bdev_nvme_submit_request
+                          - bdev_nvme_writev(qpair)
+                            - nvme_qpair_submit_request
           - bs_batch_close
 - # VEA
 - # RDB
