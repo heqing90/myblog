@@ -464,6 +464,19 @@
     3. 将预留空间数据持久化并通过PMDK事务更新VOS index原数据
   - allocation hint
     - VEA假定一个可预测的IO负载模型： 顺序追加（per IO stream），调用者记录最后一次空间分配地址做为下次分配的入参，可解决空间碎片问题
+  - 初始化
+    - vea_format
+      - block size: 4K, first block for vea header
+      - dbtree_create_inplace: create free extent tree, vsd_free_tree
+        - insert initial free extent <vfe_blk_off(1), vea_free_extent(1, total, 0)>
+        ```c
+        struct vea_free_extent {
+          uint64_t  vfe_blk_off;// block offset of the extent
+          uint32_t  vfe_blk_cnt;// total blocks of the extent
+          uint32_t  vfe_age;// monotonic timestamp
+        }
+        ```
+      - dbtree_create_inplace: create allocated extent vector tree for no-contiguous allocation
 - # RDB
   - ## key space of a database
     ```c
