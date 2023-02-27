@@ -478,6 +478,9 @@
         ```
       - dbtree_create_inplace: vsd_vec_tree, create allocated extent vector tree for no-contiguous allocation
     - vea_load
+      - create_free_class: 创建大小类空间管理二叉堆/btree
+        - d_binheap_create_inplace: vfc_heap，管理64M及以上的空间块
+        - dbtree_create: vfc_size_btr， 管理64M以下空间块
       - dbtree_create: vsi_free_btr, create in-memory free extent tree
       - dbtree_create: vsi_vec_btr, create in-memory extent vector tree
       - dbtree_create: vsi_agg_btr, create in-memory aggregation tree
@@ -490,6 +493,19 @@
         - dbtree_iterate(vsi_md_vec_btr, load_vec_entry(cb))
           - verify_vec_entry
           - compound_vec_alloc: do nothing for now
+    - 空间管理
+      - vea_reserve
+        - hint_get
+        - reserve_hit: reserve from hit offset
+          - dbtree_fetch(vsi_free_btr): 查询hint offset指向空间是否满足
+          - compound_alloc
+            - dbtree_delete: 可用空间恰好等于申请空间
+            - free_class_remove/free_class_add：可用空间大于申请空间
+        - reserve_single: reverve from the large extents(64M) or a small extent
+          - reserve_small(vfc_size_btr): 查询>=申请空间的第一个记录（已排序）
+          - 从大堆排序（vfc_heap）中取top entry来分配空间
+        - reserve_vector：未实现，直接返NOSPACE错误
+        - hint_update
 - # RDB
   - ## key space of a database
     ```c
