@@ -456,7 +456,14 @@
                             - nvme_qpair_submit_request
                               - nvme_pcie_qpair_submit_tracker
           - bs_batch_close
-- # VEA
+- # VEA: Version Block Allocator
+  - metadata 只记录free extents到一个btree中（SCM），可以和index树一起用同一个事务更新，保证原子性
+  - delayed atomicity（由元数据PMDK事务保证原子性，VEA记录DRAM&SCM两种空间分配元数据，无需记录Step1的undo日志）
+    1. 在DRAM中预留更新数据的空间
+    2. 通过RDMA传输client端数据到预留空间
+    3. 将预留空间数据持久化并通过PMDK事务更新VOS index原数据
+  - allocation hint
+    - VEA假定一个可预测的IO负载模型： 顺序追加（per IO stream），调用者记录最后一次空间分配地址做为下次分配的入参，可解决空间碎片问题
 - # RDB
   - ## key space of a database
     ```c
