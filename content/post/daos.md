@@ -465,7 +465,7 @@
   - allocation hint
     - VEA假定一个可预测的IO负载模型： 顺序追加（per IO stream），调用者记录最后一次空间分配地址做为下次分配的入参，可解决空间碎片问题
   - 初始化
-    - vea_format
+    - vea_format: 持久化数据结构
       - block size: 4K, first block for vea header
       - dbtree_create_inplace: create free extent tree, vsd_free_tree
         - insert initial free extent <vfe_blk_off(1), vea_free_extent(1, total, 0)>
@@ -476,7 +476,20 @@
           uint32_t  vfe_age;// monotonic timestamp
         }
         ```
-      - dbtree_create_inplace: create allocated extent vector tree for no-contiguous allocation
+      - dbtree_create_inplace: vsd_vec_tree, create allocated extent vector tree for no-contiguous allocation
+    - vea_load
+      - dbtree_create: vsi_free_btr, create in-memory free extent tree
+      - dbtree_create: vsi_vec_btr, create in-memory extent vector tree
+      - dbtree_create: vsi_agg_btr, create in-memory aggregation tree
+      - load_space_info
+        - dbtree_open_inplace(vsd_free_tree, vsi_md_free_btr)
+        - dbtree_open_inplace(vsd_vec_tree, vsi_md_vec_btr)
+        - dbtree_iterate(vsi_md_free_btr, load_free_entry(cb))
+          - verify_free_entry
+          - compound_free: free extent to in-memory compound index
+        - dbtree_iterate(vsi_md_vec_btr, load_vec_entry(cb))
+          - verify_vec_entry
+          - compound_vec_alloc: do nothing for now
 - # RDB
   - ## key space of a database
     ```c
