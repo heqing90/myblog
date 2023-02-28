@@ -493,19 +493,25 @@
         - dbtree_iterate(vsi_md_vec_btr, load_vec_entry(cb))
           - verify_vec_entry
           - compound_vec_alloc: do nothing for now
-    - 空间管理
-      - vea_reserve
-        - hint_get
-        - reserve_hit: reserve from hit offset
-          - dbtree_fetch(vsi_free_btr): 查询hint offset指向空间是否满足
-          - compound_alloc
-            - dbtree_delete: 可用空间恰好等于申请空间
-            - free_class_remove/free_class_add：可用空间大于申请空间
-        - reserve_single: reverve from the large extents(64M) or a small extent
-          - reserve_small(vfc_size_btr): 查询>=申请空间的第一个记录（已排序）
-          - 从大堆排序（vfc_heap）中取top entry来分配空间
-        - reserve_vector：未实现，直接返NOSPACE错误
-        - hint_update
+  - 空间管理
+    - vea_reserve
+      - hint_get
+      - reserve_hit: reserve from hit offset
+        - dbtree_fetch(vsi_free_btr): 查询hint offset指向空间是否满足
+        - compound_alloc
+          - dbtree_delete: 可用空间恰好等于申请空间
+          - free_class_remove/free_class_add：可用空间大于申请空间
+      - reserve_single: reverve from the large extents(64M) or a small extent
+        - reserve_small(vfc_size_btr): 查询>=申请空间的第一个记录（已排序）
+        - 从大堆排序（vfc_heap）中取top entry来分配空间
+      - reserve_vector：未实现，直接返NOSPACE错误
+      - hint_update
+  - vea 元数据持久化，内存将pmem修改记入TX，由umem_tx_end统一提交事务
+    - vos_publish_blocks: vox_tx_end流程触发
+      - process_resrvd_list
+        - persistent_alloc: update pmem addr
+        - compound_free: abort事务触发，释放预留的空间资源
+        - hint_tx_publish: update hint allacation info
 - # RDB
   - ## key space of a database
     ```c
